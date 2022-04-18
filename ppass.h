@@ -111,6 +111,10 @@ int ppass_encode_data(ppass_t *pp, ppass_encoder_t *enc, unsigned char *iv, unsi
  */
 int ppass_decode_data(ppass_encoder_t *enc, unsigned char *plain_data, const unsigned char *iv, const unsigned char *hmac, const unsigned char *enc_data, size_t datalen);
 
+/* Generates a key of a given `key_length` size from a passphrase `pass` as input via a PBKDF2 key derivation function using 30000 iterations.
+ * On success the generated key is written to `key`.
+ * returns 0 on success and -1 on failure, that is not generally expected
+ * */
 int ppass_generate_key_from_pass(unsigned char *key, const char *pass, uint32_t key_length);
 
 #endif
