@@ -15,6 +15,7 @@
 
 #define USE_CURVE MBEDTLS_ECP_DP_SECP256R1
 #define AES_PASS_KEY_BITS 256
+#define AES_KEY_LENGTH (AES_PASS_KEY_BITS / 8)
 #define PBKDF2_ITERATIONS 30000
 
 struct _ppass_t {
@@ -242,18 +243,23 @@ void ppass_seed_from_private(unsigned int *seed, const unsigned char *priv) {
   }
 }
 
-static int ppass_generate_key_from_pass(unsigned char *key, const char *pass) {
+int ppass_generate_key_from_pass(unsigned char *key, const char *pass, uint32_t key_length) {
   mbedtls_md_context_t ctx;
-  static const char *salt="pPass Salt for PBKDF2";
+  static const char *salt = "pPass Salt for PBKDF2";
   mbedtls_md_init(&ctx);
   if (mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA512), 1))
     goto err0;
-  if (mbedtls_pkcs5_pbkdf2_hmac(&ctx, (const unsigned char *)pass, strlen(pass), (const unsigned char *)salt, strlen(salt), PBKDF2_ITERATIONS, AES_PASS_KEY_BITS/8, key))
+  if (mbedtls_pkcs5_pbkdf2_hmac(&ctx,
+                                (const unsigned char *) pass, strlen(pass),
+                                (const unsigned char *) salt, strlen(salt),
+                                PBKDF2_ITERATIONS,
+                                key_length, key))
+
     goto err0;
   mbedtls_md_free(&ctx);
   return 0;
 
-err0:
+    err0:
   mbedtls_md_free(&ctx);
   return -1;
 }
@@ -267,7 +273,7 @@ int ppass_encrypt_private(unsigned char *enc_priv, const unsigned char *priv, co
   unsigned int i;
   int ret;
   ret=-1;
-  if (ppass_generate_key_from_pass(key, pass))
+  if (ppass_generate_key_from_pass(key, pass, AES_KEY_LENGTH))
     return -1;
   mbedtls_aes_init(&aes);
   if (mbedtls_aes_setkey_enc(&aes, key, AES_PASS_KEY_BITS))
@@ -289,7 +295,7 @@ int ppass_decrypt_private(unsigned char *priv, const unsigned char *enc_priv, co
   unsigned int i;
   int ret;
   ret=-1;
-  if (ppass_generate_key_from_pass(key, pass))
+  if (ppass_generate_key_from_pass(key, pass, AES_KEY_LENGTH))
     return -1;
   mbedtls_aes_init(&aes);
   if (mbedtls_aes_setkey_dec(&aes, key, AES_PASS_KEY_BITS))
@@ -400,7 +406,7 @@ ppass_encoder_t *ppass_encoder_from_public(const unsigned char *pub) {
 
 ppass_encoder_t *ppass_encoder_from_password(const char *pass) {
   unsigned char key[AES_PASS_KEY_BITS/8];
-  if (ppass_generate_key_from_pass(key, pass))
+  if (ppass_generate_key_from_pass(key, pass, AES_KEY_LENGTH))
     return NULL;
   return ppass_encoder_from_data(key, sizeof(key));
 }
@@ -438,7 +444,7 @@ int ppass_encode_data(ppass_t *pp, ppass_encoder_t *enc, unsigned char *iv, unsi
   if (mbedtls_ctr_drbg_random(&pp->rnd, counter, sizeof(counter)))
     return -1;
   memcpy(iv, counter, PPASS_IV_LEN);
-  off=0;
+  off = 0;
   if (mbedtls_aes_crypt_ctr(&enc->aes, datalen, &off, counter, block, plain_data, enc_data))
     return -1;
   if (ppass_hmac_sha256_2(hmac, enc->hmac_key, sizeof(enc->hmac_key), iv, PPASS_IV_LEN, enc_data, datalen))
