@@ -31,7 +31,8 @@ typedef struct _ppass_encoder_t ppass_encoder_t;
  * generally only expected if case of memory allocation failure
  * mbedtls may also have cases when its random generator fails to initialize
  */
-ppass_t *ppass_init();
+ppass_t *ppass_init(void);
+
 void ppass_free(ppass_t *pp);
 
 /* return 0 on success and -1 on failure
@@ -109,5 +110,7 @@ int ppass_encode_data(ppass_t *pp, ppass_encoder_t *enc, unsigned char *iv, unsi
  *        -1 for any other failure
  */
 int ppass_decode_data(ppass_encoder_t *enc, unsigned char *plain_data, const unsigned char *iv, const unsigned char *hmac, const unsigned char *enc_data, size_t datalen);
+
+int ppass_generate_key_from_pass(unsigned char *key, const char *pass, uint32_t key_length);
 
 #endif
